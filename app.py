@@ -135,9 +135,9 @@ class CryptoMLPredictor:
             X_train_scaled = self.scaler.transform(X_train)
             X_test_scaled = self.scaler.transform(X_test)
             
-            # Train models
-            self.price_model = RandomForestRegressor(n_estimators=50, max_depth=8, random_state=42)
-            self.direction_model = RandomForestClassifier(n_estimators=50, max_depth=8, random_state=42)
+            # Train models (smaller for Vercel limits)
+            self.price_model = RandomForestRegressor(n_estimators=20, max_depth=5, random_state=42)
+            self.direction_model = RandomForestClassifier(n_estimators=20, max_depth=5, random_state=42)
             
             self.price_model.fit(X_train_scaled, y_price_train)
             self.direction_model.fit(X_train_scaled, y_dir_train)
@@ -210,7 +210,8 @@ class CryptoMLPredictor:
 # Global predictor instance
 predictor = CryptoMLPredictor()
 
-@app.route('/api/health', methods=['GET'])
+@app.route('/', methods=['GET'])
+@app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({
         'status': 'healthy',
@@ -219,10 +220,10 @@ def health_check():
         'platform': 'Vercel Serverless'
     })
 
-@app.route('/api/train/<symbol>', methods=['POST'])
+@app.route('/train/<symbol>', methods=['POST'])
 def train_model(symbol):
     try:
-        df = predictor.fetch_historical_data(symbol, days=200)
+        df = predictor.fetch_historical_data(symbol, days=150)  # Reduced for speed
         if df is None:
             return jsonify({'error': 'Failed to fetch data'}), 400
         
@@ -244,7 +245,7 @@ def train_model(symbol):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/predict/<symbol>', methods=['GET'])
+@app.route('/predict/<symbol>', methods=['GET'])
 def predict_crypto(symbol):
     try:
         df = predictor.fetch_historical_data(symbol, days=60)
@@ -270,7 +271,7 @@ def predict_crypto(symbol):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/model_info', methods=['GET'])
+@app.route('/model_info', methods=['GET'])
 def model_info():
     return jsonify({
         'models_trained': predictor.price_model is not None,
@@ -279,9 +280,10 @@ def model_info():
         'feature_columns': predictor.feature_columns
     })
 
-# Vercel entry point
-def handler(request):
-    return app(request.environ, lambda *args: None)
+# Vercel serverless function handler
+def handler(event, context):
+    return app
 
+# For local development
 if __name__ == '__main__':
     app.run(debug=True)
