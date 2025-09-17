@@ -5,7 +5,7 @@
     }
   },
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/app.py" },
+    { "src": "/api/(.*)", "dest": "/app.py" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
